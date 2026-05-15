@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L'Ode Hissée — Numogramme V.I.S.A.</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Atkinson+Hyperlegible:wght@400;700&family=Kalam:wght@300;400&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #0d1b2a;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 100vh;
+  padding: 32px 16px 48px;
+  font-family: 'Atkinson Hyperlegible', sans-serif;
+}
+
+h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(1.1rem, 2.5vw, 1.6rem);
+  color: #F5F0E8;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  text-align: center;
+  margin-bottom: 6px;
+}
+.subtitle {
+  font-family: 'Kalam', cursive;
+  font-size: clamp(0.75rem, 1.5vw, 0.95rem);
+  color: #B87333;
+  text-align: center;
+  margin-bottom: 28px;
+  letter-spacing: 1px;
+}
+
+.canvas-wrap {
+  width: 100%;
+  max-width: 860px;
+  position: relative;
+}
+
+svg {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+/* Animations */
+@keyframes rotate-outer {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes dash-boucle {
+  to { stroke-dashoffset: -40; }
+}
+@keyframes glow {
+  0%, 100% { filter: drop-shadow(0 0 8px #B87333aa); }
+  50% { filter: drop-shadow(0 0 20px #B87333ff); }
+}
+@keyframes bubble-in {
+  from { opacity: 0; transform: scale(0.7); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.enfant-glow { animation: glow 3s ease-in-out infinite; }
+.outer-ring {
+  transform-origin: 430px 390px;
+  animation: rotate-outer 80s linear infinite;
+}
+.boucle-arrow {
+  stroke-dasharray: 8 5;
+  animation: dash-boucle 1.8s linear infinite;
+}
+
+/* Nœuds cliquables */
+.node-group {
+  cursor: pointer;
+  transition: filter 0.2s;
+}
+.node-group:hover .node-bg {
+  filter: brightness(1.4);
+}
+.node-group.active .node-bg {
+  filter: brightness(1.6) drop-shadow(0 0 10px #FFD98Aaa);
+}
+
+/* Bulle flottante */
+#bubble {
+  display: none;
+  position: fixed;
+  z-index: 999;
+  pointer-events: none;
+  animation: bubble-in 0.22s cubic-bezier(.34,1.56,.64,1) both;
+}
+#bubble.visible {
+  display: block;
+}
+#bubble-inner {
+  background: radial-gradient(ellipse at 30% 20%, #1a3555, #0d1f35);
+  border: 1.5px solid #3A5F7D;
+  border-radius: 50%;
+  width: 220px;
+  height: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 20px;
+  text-align: center;
+  box-shadow: 0 0 32px #B8733344, 0 4px 24px #00000088;
+  position: relative;
+}
+#bubble-inner::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  border: 1px solid rgba(168, 200, 224, 0.12);
+  pointer-events: none;
+}
+#bubble-num {
+  font-family: 'Playfair Display', serif;
+  font-size: 0.72rem;
+  letter-spacing: 3px;
+  color: #7ab0cc;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+#bubble-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #F5F0E8;
+  margin-bottom: 8px;
+  line-height: 1.2;
+}
+#bubble-desc {
+  font-family: 'Atkinson Hyperlegible', sans-serif;
+  font-size: 0.68rem;
+  color: #a8c0d8;
+  line-height: 1.55;
+}
+#bubble-cause {
+  font-family: 'Kalam', cursive;
+  font-size: 0.62rem;
+  color: #B87333;
+  margin-top: 8px;
+  line-height: 1.4;
+  font-style: italic;
+}
+#bubble-close-hint {
+  font-size: 0.55rem;
+  color: #3A5F7D;
+  margin-top: 10px;
+  letter-spacing: 1px;
+}
+
+/* Couleurs par nœud */
+#bubble-inner.col-bleu   { border-color: #5B8FA8; }
+#bubble-inner.col-bleu #bubble-title { color: #A8C8E0; }
+#bubble-inner.col-cuivre { border-color: #B87333; background: radial-gradient(ellipse at 30% 20%, #2a1800, #160d00); }
+#bubble-inner.col-cuivre #bubble-title { color: #FFD98A; }
+#bubble-inner.col-cuivre #bubble-num  { color: #e0a060; }
+#bubble-inner.col-vert   { border-color: #5C7A5C; background: radial-gradient(ellipse at 30% 20%, #0f2810, #0a1a0a); }
+#bubble-inner.col-vert   #bubble-title { color: #8aba8a; }
+#bubble-inner.col-vert   #bubble-num   { color: #6a9a6a; }
+#bubble-inner.col-or     { border-color: #D4AF37; background: radial-gradient(ellipse at 30% 20%, #2a1e00, #160f00); }
+#bubble-inner.col-or     #bubble-title { color: #FFD98A; }
+
+/* Hint flottant initial */
+#hint {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(13,27,42,0.92);
+  border: 1px solid #3A5F7D;
+  border-radius: 24px;
+  padding: 8px 20px;
+  font-size: 0.72rem;
+  color: #7ab0cc;
+  letter-spacing: 1px;
+  font-family: 'Atkinson Hyperlegible', sans-serif;
+  pointer-events: none;
+  transition: opacity 0.5s;
+}
+#hint.hidden { opacity: 0; }
+</style>
+</head>
+<body>
+
+<h1>L'Ode Hissée</h1>
+<p class="subtitle">Numogramme de l'Inclusion · Projet V.I.S.A. · Nathalie Thérage</p>
+
+<div class="canvas-wrap">
+<svg viewBox="0 0 860 780" xmlns="http://www.w3.org/2000/svg" id="main-svg">
+<defs>
+  <radialGradient id="grad-enfant" cx="50%" cy="50%" r="50%">
+    <stop offset="0%" stop-color="#FFD98A"/>
+    <stop offset="55%" stop-color="#B87333"/>
+    <stop offset="100%" stop-color="#7a4f1f" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="grad-bg" cx="50%" cy="50%" r="50%">
+    <stop offset="0%" stop-color="#112233"/>
+    <stop offset="100%" stop-color="#0d1b2a"/>
+  </radialGradient>
+  <linearGradient id="grad-boucle" x1="0%" y1="0%" x2="100%" y2="100%">
+    <stop offset="0%" stop-color="#B87333"/>
+    <stop offset="100%" stop-color="#5C7A5C"/>
+  </linearGradient>
+  <linearGradient id="grad-triangle" x1="0%" y1="0%" x2="100%" y2="100%">
+    <stop offset="0%" stop-color="#3A5F7D"/>
+    <stop offset="100%" stop-color="#5B8FA8"/>
+  </linearGradient>
+  <filter id="glow-filter">
+    <feGaussianBlur stdDeviation="3" result="blur"/>
+    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+  <filter id="soft-shadow">
+    <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000" flood-opacity="0.4"/>
+  </filter>
+  <marker id="arrow-blue" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+    <path d="M0,0 L0,6 L8,3 z" fill="#5B8FA8"/>
+  </marker>
+  <marker id="arrow-cuivre" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+    <path d="M0,0 L0,6 L8,3 z" fill="#B87333"/>
+  </marker>
+  <marker id="arrow-vert" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+    <path d="M0,0 L0,6 L8,3 z" fill="#5C7A5C"/>
+  </marker>
+  <marker id="arrow-blanc" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+    <path d="M0,0 L0,6 L8,3 z" fill="#F5F0E8" opacity="0.7"/>
+  </marker>
+</defs>
+
+<!-- FOND -->
+<rect width="860" height="780" fill="url(#grad-bg)" rx="20"/>
+
+<!-- GRAND CERCLE OUVERT -->
+<circle class="outer-ring" cx="430" cy="390" r="355"
+  fill="none" stroke="#5C7A5C" stroke-width="1.2"
+  stroke-dasharray="4 10" opacity="0.5"/>
+<path d="M 430,35 A 355,355 0 1,0 775,500"
+  fill="none" stroke="#5C7A5C" stroke-width="2"
+  stroke-dasharray="6 8" opacity="0.7"/>
+<text x="758" y="168" font-family="'Atkinson Hyperlegible'" font-size="9.5" fill="#5C7A5C" opacity="0.85" transform="rotate(-42, 758, 168)">CHAMP DES POSSIBLES</text>
+
+<!-- CARRÉ — Cadre Sociétal -->
+<rect x="115" y="90" width="630" height="580" rx="8"
+  fill="none" stroke="#3A5F7D" stroke-width="2" opacity="0.8" filter="url(#soft-shadow)"/>
+<text x="430" y="82" text-anchor="middle" font-family="'Playfair Display'" font-size="11.5" fill="#A8C8E0" letter-spacing="3">LE CADRE SOCIÉTAL · LA LOI · LA CITÉ</text>
+<text x="124" y="112" font-size="9" fill="#3A5F7D" opacity="0.7" font-family="'Atkinson Hyperlegible'">DROITS</text>
+<text x="694" y="112" font-size="9" fill="#3A5F7D" opacity="0.7" font-family="'Atkinson Hyperlegible'" text-anchor="end">LOIS</text>
+<text x="124" y="664" font-size="9" fill="#3A5F7D" opacity="0.7" font-family="'Atkinson Hyperlegible'">CULTURE</text>
+<text x="694" y="664" font-size="9" fill="#3A5F7D" opacity="0.7" font-family="'Atkinson Hyperlegible'" text-anchor="end">RESSOURCES</text>
+
+<!-- TRIANGLE — Triangulation -->
+<polygon points="430,155 672,492 188,492"
+  fill="none" stroke="url(#grad-triangle)" stroke-width="2" opacity="0.75"/>
+<line x1="430" y1="160" x2="660" y2="480" stroke="#5B8FA8" stroke-width="1" marker-end="url(#arrow-blue)" opacity="0.5"/>
+<line x1="660" y1="480" x2="200" y2="480" stroke="#5B8FA8" stroke-width="1" marker-end="url(#arrow-blue)" opacity="0.5"/>
+<line x1="200" y1="480" x2="425" y2="165" stroke="#5B8FA8" stroke-width="1" marker-end="url(#arrow-blue)" opacity="0.5"/>
+
+<!-- SOMMETS DU TRIANGLE — cliquables -->
+<g class="node-group" data-node="famille">
+  <circle cx="430" cy="148" r="38" fill="#1a3050" stroke="#3A5F7D" stroke-width="2" class="node-bg" opacity="0.92"/>
+  <text x="430" y="138" text-anchor="middle" font-family="'Playfair Display'" font-size="12" font-weight="700" fill="#A8C8E0">FAMILLE</text>
+  <text x="430" y="152" text-anchor="middle" font-family="'Atkinson Hyperlegible'" font-size="7.5" fill="#7ab0cc">Soutien affectif</text>
+  <text x="430" y="163" text-anchor="middle" font-family="'Atkinson Hyperlegible'" font-size="7.5" fill="#7ab0cc">Valeurs · Sécurité</text>
+</g>
+
+<g class="node-group" data-node="ecole">
+  <circle cx="672" cy="500" r="42" fill="#1a3020" stroke="#5C7A5C" stroke-width="2" class="node-bg" opacity="0.92"/>
+  <text x="672" y="490" text-anchor="middle" font-family="'Playfair Display'" font-size="11.5" font-weight="700" fill="#8aba8a">ÉCOLE</text>
+  <text x="672" y="503" text-anchor="middle" font-family="'Atkinson Hyperlegible'" font-size="7.5" fill="#6a9a6a">& CITÉ</text>
+  <text x="672" y="515" text-anchor="middle" font-family="'Atkinson Hyperlegible'" font-size="7" fill="#6a9a6a">Apprentissage</text>
+  <text x="672" y="525" text-anchor="middle" font-family="'Atkinson Hyperlegible'" font-size="7" fill="#6a9a6a">Socialisation</text>
+</g>
+
+<g class="node-group" data-node="pros">
+  <circle cx="188" cy="500" r="42" fill="#2a1a0a" stroke="#B87333" stroke-width="2" class="node-bg" opacity="0.92"/>
+  <text x="188" y="490" text-anchor="middle" font-family="'Playfair Display'" font-size="10.5" font-weight="700" fill="#e0a060">PROFES-</text>
+  <text x="188" y="503" text-anchor="middle" font-family="'Playfair Display'" font-size="10.5" font-weight="700" fill="#e0a060">SIONNELS</text>
+  <text x="188" y="516" text-anchor="middle" font-family="'Atkinson Hyperlegible'" font-size="7" fill="#c08040">Santé · Social</text>
+  <text x="188" y="526" text-anchor="middle" font-family="'Atkinson Hyperlegible'" font-size="7" fill="#c08040">Éducatif · Juridique</text>
+</g>
+
+<!-- FLUX entre les 10C -->
+<g opacity="0.45" stroke-width="1.2" fill="none">
+  <line x1="430" y1="355" x2="430" y2="255" stroke="#5B8FA8" marker-end="url(#arrow-blue)"/>
+  <line x1="455" y1="367" x2="545" y2="300" stroke="#5B8FA8" marker-end="url(#arrow-blue)"/>
+  <line x1="458" y1="385" x2="570" y2="370" stroke="#5B8FA8" marker-end="url(#arrow-blue)"/>
+  <line x1="455" y1="405" x2="540" y2="460" stroke="#5B8FA8" marker-end="url(#arrow-blue)"/>
+  <line x1="430" y1="415" x2="430" y2="470" stroke="#5B8FA8" marker-end="url(#arrow-blue)"/>
+  <line x1="405" y1="405" x2="320" y2="455" stroke="#B87333" marker-end="url(#arrow-cuivre)"/>
+  <line x1="398" y1="385" x2="290" y2="370" stroke="#B87333" marker-end="url(#arrow-cuivre)"/>
+  <line x1="405" y1="367" x2="315" y2="295" stroke="#5C7A5C" marker-end="url(#arrow-vert)"/>
+  <line x1="430" y1="360" x2="370" y2="260" stroke="#5C7A5C" marker-end="url(#arrow-vert)"/>
+</g>
+
+<!-- Boucles de rétroaction -->
+<g opacity="0.5" fill="none" stroke-dasharray="4 5" stroke-width="1">
+  <path d="M 300,375 Q 250,300 380,248" stroke="#B87333" marker-end="url(#arrow-cuivre)"/>
+  <path d="M 365,252 Q 320,310 400,360" stroke="#5C7A5C" marker-end="url(#arrow-vert)"/>
+</g>
+
+<!-- LES 10C — tous cliquables -->
+
+<!-- C2 -->
+<g class="node-group" data-node="c2">
+  <circle cx="430" cy="232" r="30" fill="#0f2a3a" stroke="#5B8FA8" stroke-width="1.8" class="node-bg" opacity="0.95" filter="url(#soft-shadow)"/>
+  <text x="430" y="227" text-anchor="middle" font-family="'Atkinson Hyperlegible'" font-size="8" font-weight="700" fill="#A8C8E0">C2</text>
+  <text x="430" y="239" text-anchor="middle" font-family="'Atkinson Hyperlegible'" font-size="7.5" fill="#7ab0cc">Comprendre</text>
+</g>
+
+<!-- C3 -->
+<g class="node-group" data-node="c3">
+  <circle cx="555" cy="290" r="26" fill="#0f2a3a" stroke="#5B8FA8" stroke-width="1.5" class="node-bg" opacity="0.9"/>
+  <text x="555" y="286" text-anchor="middle" font-family="'Atkinson Hyperlegible'" font-size="8" font-weight="700" fill="#A8C8E0">C3</text>
+  <text x="555" y="298" text-anchor="middle" font-family="'Atkinson Hyperlegible'" font-size="7" fill="#7ab0cc">CAA</text>
+</g>
+
+<!-- C4 -->
+<g class="node-group" data-node="c4">
+  <circle cx="590" cy="375" r="24" fill="#0f2a3a" stroke="#5B8FA8" stroke-width="1.5" class="node-bg" opacity="0.9"/>
+  <text x="590" y="371" text-anchor="middle" font-family="'Atkinson Hyperlegible'" font-size="8" font-weight="700" fill="#A8C8E0">C4</text>
+  <text x="590" y="383" text-anchor="middle" font-family="'Atkinson Hyperlegible'" font-size="7" fill="#7ab0cc">Coordonner</text>
+</g>
+
+<!-- C5 -->
+<g class="node-group" data-node="c5">
+  <circle cx="555" cy="460" r="24" fill="#0f2a3a" stroke="#5B8FA8" stroke-width="1.5" class="node-bg" opacity="0.9"/>
+  <text x="555" y="456" text-anchor="middle" font-family="'Atkinson Hyperlegible'" font-size="8" font-weight="700" fill="#A8C8E0">C5</text>
+  <text x="555" y="468" text-anchor="middle" font-family="'Atkinson Hyperlegible'" font-size="7" fill="#7ab0cc">Outiller</text>
+</g>
+
+<!-- C6 -->
+<g class="node-group" data-node="c6">
+  <circle cx="430" cy="490" r="26" fill="#0f2a3a" stroke="#5B8FA8" stroke-width="1.5" class="node-bg" opacity="0.9"/>
+  <text x="430" y="486" text-anchor="middle" font-family="'Atkinson Hyperlegible'" font-size="8" font-weight="700" fill="#A8C8E0">C6</text>
+  <text x="430" y="498" text-anchor="middle" font-family="'Atkinson Hyperlegible'" font-size="7" fill="#7ab0cc">Aligner</text>
+</g>
+
+<!-- C7 PIVOT -->
+<g class="node-group" data-node="c7">
+  <circle cx="305" cy="460" r="30" fill="#2a1500" stroke="#B87333" stroke-width="2.5" class="node-bg" opacity="0.97" filter="url(#glow-filter)"/>
+  <text x="305" y="454" text-anchor="middle" font-family="'Atkinson Hyperlegible'" font-size="8" font-weight="700" fill="#FFD98A">C7</text>
+  <text x="305" y="465" text-anchor="middle" font-family="'Atkinson Hyperlegible'" font-size="7.5" fill="#e0a060">Décoder</text>
+  <text x="305" y="476" text-anchor="middle" font-family="'Atkinson Hyperlegible'" font-size="6.5" fill="#c08040">PIVOT</text>
+</g>
+
+<!-- C8 -->
+<g class="node-group" data-node="c8">
+  <circle cx="270" cy="375" r="24" fill="#0f2a3a" stroke="#5C7A5C" stroke-width="1.5" class="node-bg" opacity="0.9"/>
+  <text x="270" y="371" text-anchor="middle" font-family="'Atkinson Hyperlegible'" font-size="8" font-weight="700" fill="#8aba8a">C8</text>
+  <text x="270" y="383" text-anchor="middle" font-family="'Atkinson Hyperlegible'" font-size="7" fill="#6a9a6a">Adapter</text>
+</g>
+
+<!-- C9 -->
+<g class="node-group" data-node="c9">
+  <circle cx="305" cy="290" r="24" fill="#0f2a3a" stroke="#5C7A5C" stroke-width="1.5" class="node-bg" opacity="0.9"/>
+  <text x="305" y="286" text-anchor="middle" font-family="'Atkinson Hyperlegible'" font-size="8" font-weight="700" fill="#8aba8a">C9</text>
+  <text x="305" y="298" text-anchor="middle" font-family="'Atkinson Hyperlegible'" font-size="7" fill="#6a9a6a">Inclure</text>
+</g>
+
+<!-- C10 -->
+<g class="node-group" data-node="c10">
+  <circle cx="358" cy="237" r="28" fill="#0a2010" stroke="#5C7A5C" stroke-width="2" class="node-bg" opacity="0.95"/>
+  <text x="358" y="231" text-anchor="middle" font-family="'Atkinson Hyperlegible'" font-size="8" font-weight="700" fill="#8aba8a">C10</text>
+  <text x="358" y="243" text-anchor="middle" font-family="'Atkinson Hyperlegible'" font-size="7.5" fill="#6a9a6a">Citoyen</text>
+</g>
+
+<!-- C1 — L'ENFANT central — cliquable -->
+<g class="node-group enfant-glow" data-node="c1">
+  <circle cx="430" cy="390" r="60" fill="#B87333" opacity="0.06"/>
+  <circle cx="430" cy="390" r="48" fill="#B87333" opacity="0.10"/>
+  <circle cx="430" cy="390" r="40" fill="url(#grad-enfant)" stroke="#FFD98A" stroke-width="2" class="node-bg" opacity="0.95"/>
+  <text x="430" y="384" text-anchor="middle" font-family="'Playfair Display'" font-size="9.5" font-weight="700" fill="#1a0a00">C1</text>
+  <text x="430" y="397" text-anchor="middle" font-family="'Playfair Display'" font-size="8.5" font-style="italic" fill="#1a0a00">L'ENFANT</text>
+  <text x="430" y="410" text-anchor="middle" font-family="'Atkinson Hyperlegible'" font-size="6.5" fill="#3a1a00">au cœur</text>
+</g>
+
+<!-- BLOUSE BLEUE -->
+<g class="node-group" data-node="bb">
+  <circle cx="430" cy="340" r="16" fill="#0a1828" stroke="#A8C8E0" stroke-width="1.5" stroke-dasharray="3 3" class="node-bg"/>
+  <text x="430" y="336" text-anchor="middle" font-family="'Atkinson Hyperlegible'" font-size="6.5" font-weight="700" fill="#A8C8E0">🥼</text>
+  <text x="430" y="348" text-anchor="middle" font-family="'Atkinson Hyperlegible'" font-size="6" fill="#A8C8E0">Blouse</text>
+  <text x="430" y="358" text-anchor="middle" font-family="'Atkinson Hyperlegible'" font-size="6" fill="#A8C8E0">Bleue</text>
+</g>
+
+<g opacity="0.3" fill="none" stroke="#A8C8E0" stroke-width="1" stroke-dasharray="3 5">
+  <line x1="430" y1="325" x2="430" y2="190"/>
+  <line x1="438" y1="330" x2="645" y2="468"/>
+  <line x1="422" y1="330" x2="215" y2="468"/>
+</g>
+
+<!-- TACHE D'HUILE -->
+<g opacity="0.65" font-family="'Atkinson Hyperlegible'" font-size="7.5" fill="#6a8aaa" text-anchor="middle">
+  <circle cx="195" cy="175" r="18" fill="#0a1828" stroke="#3A5F7D" stroke-width="1" stroke-dasharray="2 3"/>
+  <text x="195" y="171" fill="#A8C8E0" font-size="7" font-weight="700">AESH</text>
+  <text x="195" y="182" fill="#7ab0cc" font-size="6">formée</text>
+  <line x1="213" y1="182" x2="250" y2="250" stroke="#3A5F7D" stroke-width="0.8" stroke-dasharray="2 4" marker-end="url(#arrow-blanc)"/>
+
+  <circle cx="650" cy="175" r="18" fill="#0a1828" stroke="#3A5F7D" stroke-width="1" stroke-dasharray="2 3"/>
+  <text x="650" y="171" fill="#A8C8E0" font-size="7" font-weight="700">Instit</text>
+  <text x="650" y="182" fill="#7ab0cc" font-size="6">sensibilisée</text>
+  <line x1="634" y1="182" x2="595" y2="250" stroke="#3A5F7D" stroke-width="0.8" stroke-dasharray="2 4" marker-end="url(#arrow-blanc)"/>
+
+  <circle cx="145" cy="610" r="18" fill="#0a1828" stroke="#B87333" stroke-width="1" stroke-dasharray="2 3"/>
+  <text x="145" y="606" fill="#e0a060" font-size="7" font-weight="700">Auxil.</text>
+  <text x="145" y="617" fill="#c08040" font-size="6">outillée</text>
+
+  <circle cx="700" cy="610" r="18" fill="#0a1828" stroke="#5C7A5C" stroke-width="1" stroke-dasharray="2 3"/>
+  <text x="700" y="606" fill="#8aba8a" font-size="7" font-weight="700">Anim.</text>
+  <text x="700" y="617" fill="#6a9a6a" font-size="6">inclusif</text>
+
+  <circle cx="130" cy="380" r="18" fill="#0a1828" stroke="#3A5F7D" stroke-width="1" stroke-dasharray="2 3"/>
+  <text x="130" y="376" fill="#A8C8E0" font-size="6.5" font-weight="700">Chauf.</text>
+  <text x="130" y="387" fill="#7ab0cc" font-size="6">formé</text>
+
+  <circle cx="720" cy="380" r="18" fill="#0a1828" stroke="#3A5F7D" stroke-width="1" stroke-dasharray="2 3"/>
+  <text x="720" y="376" fill="#A8C8E0" font-size="6.5" font-weight="700">Caiss.</text>
+  <text x="720" y="387" fill="#7ab0cc" font-size="6">informée</text>
+</g>
+
+<text x="148" y="222" font-family="'Kalam'" font-size="8" fill="#3A5F7D" opacity="0.7" transform="rotate(-55, 148, 222)">tache d'huile →</text>
+
+<!-- BOUCLE GÉNÉRATIONNELLE -->
+<path d="M 385,218 Q 430,150 490,120 Q 560,80 650,70 Q 720,65 780,120"
+  fill="none" stroke="url(#grad-boucle)" stroke-width="2"
+  class="boucle-arrow" marker-end="url(#arrow-vert)" opacity="0.85"/>
+<path d="M 780,120 Q 820,200 810,340 Q 800,450 760,540"
+  fill="none" stroke="#5C7A5C" stroke-width="1.5"
+  stroke-dasharray="5 6" marker-end="url(#arrow-vert)" opacity="0.5"/>
+
+<text x="716" y="58" text-anchor="middle" font-family="'Playfair Display'" font-size="10" font-style="italic" fill="#5C7A5C" opacity="0.9">Générations futures</text>
+<text x="716" y="70" text-anchor="middle" font-family="'Atkinson Hyperlegible'" font-size="7.5" fill="#4a6a4a" opacity="0.8">L'enfant de demain</text>
+<circle cx="780" cy="120" r="5" fill="#5C7A5C" opacity="0.8"/>
+
+<text x="758" y="540" text-anchor="middle" font-family="'Kalam'" font-size="9" fill="#5C7A5C" opacity="0.7" transform="rotate(90, 758, 540)">Prise de conscience sociétale</text>
+<text x="430" y="740" text-anchor="middle" font-family="'Kalam'" font-size="10" fill="#5C7A5C" letter-spacing="2" opacity="0.75">↻ contamination positive · effet générationnel</text>
+
+<!-- LÉGENDE -->
+<g transform="translate(120, 690)" font-family="'Atkinson Hyperlegible'" font-size="8" opacity="0.75">
+  <circle cx="6" cy="6" r="5" fill="#3A5F7D"/>
+  <text x="15" y="10" fill="#A8C8E0">Triangle · Triangulation du soutien</text>
+  <rect x="1" y="18" width="10" height="6" fill="none" stroke="#3A5F7D" stroke-width="1.2" rx="1"/>
+  <text x="15" y="26" fill="#A8C8E0">Carré · Cadre sociétal</text>
+  <circle cx="6" cy="36" r="5" fill="none" stroke="#5C7A5C" stroke-width="1" stroke-dasharray="2 3"/>
+  <text x="15" y="40" fill="#8aba8a">Cercle ouvert · Champ des possibles</text>
+  <circle cx="6" cy="50" r="5" fill="url(#grad-enfant)"/>
+  <text x="15" y="54" fill="#FFD98A">C1 · L'Enfant · cliquer pour explorer</text>
+</g>
+
+<text x="430" y="762" text-anchor="middle" font-family="'Atkinson Hyperlegible'" font-size="7.5" fill="#2a4a6a" opacity="0.6">Projet V.I.S.A. · Nathalie Thérage · Blouses Bleues · Arras (62) · #ArmurerLesAidants</text>
+
+</svg>
+</div>
+
+<!-- BULLE FLOTTANTE -->
+<div id="bubble">
+  <div id="bubble-inner">
+    <div id="bubble-num"></div>
+    <div id="bubble-title"></div>
+    <div id="bubble-desc"></div>
+    <div id="bubble-cause"></div>
+    <div id="bubble-close-hint">· cliquer ailleurs pour fermer ·</div>
+  </div>
+</div>
+
+<!-- HINT -->
+<div id="hint">💡 Cliquer sur un nœud pour explorer</div>
+
+<script>
+const DATA = {
+  c1: {
+    num: "C1 — Centre",
+    title: "L'Enfant",
+    desc: "L'enfant est au cœur de tout. Chaque décision, chaque outil, chaque action rayonne depuis lui — pas depuis ses déficits, mais depuis son fonctionnement unique, ses besoins réels, ses forces.",
+    cause: "Partir de l'enfant → tout s'aligne.",
+    color: "col-or"
+  },
+  c2: {
+    num: "C2 — Compréhension",
+    title: "Lire le fonctionnement unique",
+    desc: "Avant d'agir, comprendre. Lire le profil sensoriel, cognitif et émotionnel de l'enfant. Sortir du « comportement problème » pour entrer dans la logique de l'enfant. C'est la boussole.",
+    cause: "Compréhension → moins d'errance, plus d'efficacité.",
+    color: "col-bleu"
+  },
+  c3: {
+    num: "C3 — Communication",
+    title: "Donner une voix — CAA",
+    desc: "Tout enfant a le droit de s'exprimer. La Communication Alternative et Augmentée (CAA) — ARASAAC, PECS, PODD — n'est pas un outil de substitution : c'est une langue. Généraliser partout, par tous.",
+    cause: "CAA généralisée → réduction des crises, autonomie accrue.",
+    color: "col-bleu"
+  },
+  c4: {
+    num: "C4 — Coordination",
+    title: "Trianguler les acteurs",
+    desc: "Famille, professionnels, école/cité : les trois pôles doivent parler le même langage. La Blouse Bleue orchestre cette triangulation — cahier de liaison, réunions, formations flash 15 min.",
+    cause: "Coordination → cohérence vécue par l'enfant.",
+    color: "col-bleu"
+  },
+  c5: {
+    num: "C5 — Compétences",
+    title: "Outiller l'entourage",
+    desc: "Former les auxiliaires, les AESH, les parents, les animateurs. Ateliers pratiques (cuisine, jardinage, bricolage avec Popillos). Répétition structurée TEACCH. Les 167 h hors séances comptent autant que les 30 min de soin.",
+    cause: "Entourage outillé → autonomie progressive au quotidien.",
+    color: "col-bleu"
+  },
+  c6: {
+    num: "C6 — Cohérence",
+    title: "Aligner les approches",
+    desc: "Un enfant qui reçoit des messages contradictoires régresse. Aligner les approches entre tous les acteurs — même vocabulaire, mêmes routines, mêmes réponses aux comportements — est non négociable.",
+    cause: "Cohérence → sécurité interne, apprentissages stabilisés.",
+    color: "col-bleu"
+  },
+  c7: {
+    num: "C7 — Comportement · PIVOT",
+    title: "Décoder le message",
+    desc: "Le comportement dit quelque chose. Cri, repli, agitation : c'est une communication non verbale. Le décoder, c'est trouver le besoin sous-jacent — sensoriel, émotionnel, communicationnel — avant de répondre.",
+    cause: "Décodage → moins d'escalade, plus de lien.",
+    color: "col-cuivre"
+  },
+  c8: {
+    num: "C8 — Contexte",
+    title: "Adapter l'environnement",
+    desc: "L'environnement parle avant même que l'adulte ouvre la bouche. Lumières, bruits, espaces, emploi du temps visuel, zones de décompression : adapter le contexte, c'est prévenir plutôt que guérir.",
+    cause: "Environnement adapté → moins de surcharge, plus de participation.",
+    color: "col-vert"
+  },
+  c9: {
+    num: "C9 — Communautaire",
+    title: "Inclure la cité",
+    desc: "L'inclusion ne s'arrête pas à la porte de l'école. Cantine, transports, médiathèque, piscine, fête de quartier : chaque acteur de la cité peut être formé, sensibilisé, allié. Tache d'huile.",
+    cause: "Cité inclusive → enfant citoyen, famille respirant.",
+    color: "col-vert"
+  },
+  c10: {
+    num: "C10 — Citoyenneté",
+    title: "L'adulte de demain",
+    desc: "L'horizon de tout le parcours : un adulte autiste qui vit, choisit, contribue. Pas une case dans un ESAT. Un citoyen. Ce que V.I.S.A. prépare dès la première année de vie, c'est cette dignité-là.",
+    cause: "Citoyenneté préparée dès l'enfance → adulte autonome et inclus.",
+    color: "col-vert"
+  },
+  famille: {
+    num: "Pôle · Triangulation",
+    title: "La Famille",
+    desc: "Premier pilier du triangle de soutien. Sécurité affective, valeurs, continuité éducative à domicile. La famille est experte de son enfant — V.I.S.A. l'arme et la reconnaît comme telle.",
+    cause: "Famille armée → relais naturel de tous les apprentissages.",
+    color: "col-bleu"
+  },
+  ecole: {
+    num: "Pôle · Triangulation",
+    title: "École & Cité",
+    desc: "Deuxième pilier : le monde social et scolaire. AESH, instits, agents de cantine, animateurs périscolaires. L'école inclusive ne se décrète pas — elle se construit, acteur par acteur, formation flash par formation flash.",
+    cause: "École formée → inclusion réelle, pas de façade.",
+    color: "col-vert"
+  },
+  pros: {
+    num: "Pôle · Triangulation",
+    title: "Les Professionnels",
+    desc: "Troisième pilier : les intervenants du soin, du social, du juridique, de l'éducatif. Auxiliaires de vie, orthophonistes, psychomotriciens, MDPH... La triangulation les relie à la famille et à l'école.",
+    cause: "Professionnels coordonnés → pas de perte en translation.",
+    color: "col-cuivre"
+  },
+  bb: {
+    num: "Rôle · Blouse Bleue",
+    title: "Nathalie — Parent Ressource",
+    desc: "La Blouse Bleue est au centre du dispositif, entre les trois pôles. Elle ne remplace personne — elle articule, traduit, forme, orchestre. Formation flash 15 min, outils CAA sur mesure, médiation culturelle.",
+    cause: "Blouse Bleue → le ciment invisible qui tient le système.",
+    color: "col-bleu"
+  }
+};
+
+const bubble = document.getElementById('bubble');
+const bubbleInner = document.getElementById('bubble-inner');
+const bubbleNum = document.getElementById('bubble-num');
+const bubbleTitle = document.getElementById('bubble-title');
+const bubbleDesc = document.getElementById('bubble-desc');
+const bubbleCause = document.getElementById('bubble-cause');
+const hint = document.getElementById('hint');
+
+let activeNode = null;
+let hintHidden = false;
+
+function showBubble(nodeKey, clickX, clickY) {
+  const d = DATA[nodeKey];
+  if (!d) return;
+
+  bubbleNum.textContent = d.num;
+  bubbleTitle.textContent = d.title;
+  bubbleDesc.textContent = d.desc;
+  bubbleCause.textContent = d.cause ? '→ ' + d.cause : '';
+
+  // Reset colors
+  bubbleInner.className = d.color || 'col-bleu';
+
+  // Position
+  const bw = 220, bh = 220;
+  const margin = 12;
+  const vw = window.innerWidth, vh = window.innerHeight;
+
+  let x = clickX + 16;
+  let y = clickY - bh / 2;
+
+  if (x + bw > vw - margin) x = clickX - bw - 16;
+  if (y < margin) y = margin;
+  if (y + bh > vh - margin) y = vh - bh - margin;
+
+  bubble.style.left = x + 'px';
+  bubble.style.top = y + 'px';
+
+  bubble.classList.remove('visible');
+  void bubble.offsetWidth; // force reflow for animation
+  bubble.classList.add('visible');
+
+  if (!hintHidden) {
+    hint.classList.add('hidden');
+    hintHidden = true;
+  }
+}
+
+function hideBubble() {
+  bubble.classList.remove('visible');
+  if (activeNode) {
+    activeNode.classList.remove('active');
+    activeNode = null;
+  }
+}
+
+// Attacher les événements à tous les nœuds
+document.querySelectorAll('.node-group[data-node]').forEach(g => {
+  g.addEventListener('click', function(e) {
+    e.stopPropagation();
+    const key = this.dataset.node;
+
+    if (activeNode === this) {
+      hideBubble();
+      return;
+    }
+    if (activeNode) activeNode.classList.remove('active');
+    activeNode = this;
+    this.classList.add('active');
+
+    showBubble(key, e.clientX, e.clientY);
+  });
+});
+
+// Fermer en cliquant ailleurs
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.node-group')) hideBubble();
+});
+
+// Masquer le hint après 4s
+setTimeout(() => {
+  if (!hintHidden) hint.classList.add('hidden');
+}, 4000);
+</script>
+</body>
+</html>
